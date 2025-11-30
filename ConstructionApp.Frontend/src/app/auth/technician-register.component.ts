@@ -9,7 +9,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-technician-register',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: 'technician-register.component.html',
+  templateUrl: './technician-register.component.html',
   styleUrls: ['./technician-register.component.css']
 })
 export class TechnicianRegisterComponent {

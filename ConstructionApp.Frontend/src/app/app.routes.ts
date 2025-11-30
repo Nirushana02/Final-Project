@@ -1,5 +1,5 @@
 // src/app/app.routes.ts
-import { Routes } from '@angular/router';
+import { Routes, RouterModule } from '@angular/router';
 
 // Public Components
 import { HomeComponent } from './home/home';

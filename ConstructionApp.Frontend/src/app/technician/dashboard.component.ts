@@ -1,134 +1,169 @@
-// src/app/technician/dashboard.component.ts
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TechnicianService } from './technician.service';
-import { AuthService } from '../shared/services/auth.service';
+import { DecimalPipe } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 
 @Component({
   selector: 'app-technician-dashboard',
-  standalone: true,
-  imports: [CommonModule], // <-- fixes *ngIf / *ngFor warnings
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
-  encapsulation: ViewEncapsulation.None
+  standalone: true,
+  imports: [CommonModule, RouterModule],
+  providers: [DecimalPipe]
 })
 export class TechnicianDashboardComponent implements OnInit {
-  profileName = 'John Doe';
-  profileImage = '/assets/avatar.png';
+  profileName: string | null = null;
+  profileAvatarUrl: string | null = null;
+  experienceYears: number | null = null;
 
-  stats: any = {};
-  newJobs: any[] = [];
-  currentJob: any | null = null;
-  weekly: any = {};
+  // stats
+  stats = {
+    totalRevenue: 0,
+    revenueChangePercent: 0,
+    jobsCompleted: 0,
+    jobsChangePercent: 0,
+    currentRating: 0,
+    wallet: 0
+  };
 
-  verificationStatus: string | null = null;
-  loading = false;
-  error = '';
+  newJobs: Array<any> = [];
+  currentJob: any = null;
+  weekly = { total: 0, changePercent: 0, bars: [] };
 
-  constructor(private techService: TechnicianService, private auth: AuthService) {}
+  loading = {
+    profile: true,
+    stats: true,
+    jobs: true,
+    current: true,
+    weekly: true
+  };
+
+  constructor(private techService: TechnicianService) {}
 
   ngOnInit(): void {
-    // get verification status from AuthService (if you store it there)
-    // fallback to 'Verified' for demo
-    try {
-      // If your AuthService exposes a method, use it. Otherwise default.
-      // this.verificationStatus = this.auth.getTechnicianVerificationStatus();
-      this.verificationStatus = 'Verified';
-    } catch {
-      this.verificationStatus = 'Verified';
-    }
-
-    this.setupMockData();
-    // optionally call API:
-    // this.loadJobs();
+    this.loadProfile();
+    this.loadDashboardData();
   }
 
-  private setupMockData(): void {
-    this.stats = {
-      totalRevenue: 4250,
-      jobsCompleted: 15,
-      currentRating: 4.8,
-      wallet: 850.75,
-      revenueChange: 5.2,
-      jobsChange: 2.0
-    };
-
-    this.newJobs = [
-      { bookingID: 101, title: 'Plumbing Fixture Installation', rateText: 'Fixed Rate: $250', address: '123 Main St, Anytown' },
-      { bookingID: 102, title: 'Electrical Wiring Repair', rateText: 'Fixed Rate: $400', address: '456 Oak Ave, Somecity' },
-      { bookingID: 103, title: 'Custom Shelving Unit', rateText: 'Fixed Rate: $320', address: '789 Pine Ln, Villagetown' }
-    ];
-
-    this.currentJob = { bookingID: 99, title: 'HVAC System Maintenance', address: '987 Birch Rd, Metropolia', progress: 75, status: 'InProgress' };
-
-    this.weekly = { total: 1150, change: 12, bars: [10, 40, 60, 30, 90, 70, 100] };
-  }
-
-  // if you want to load real data from API:
-  loadJobs(): void {
-    this.loading = true;
-    this.techService.getAssignedJobs().subscribe({
-      next: (res: any) => {
-        this.loading = false;
-        this.newJobs = res?.data ?? res ?? this.newJobs;
-      },
-      error: (err: any) => {
-        this.loading = false;
-        this.error = err?.error?.message ?? 'Failed to load jobs';
+  // dashboard.component.ts (replace loadProfile)
+loadProfile() {
+  this.loading.profile = true;
+  this.techService.getAnyProfile()
+    .pipe(catchError(err => { console.error('both profile endpoints failed', err); return of(null); }))
+    .subscribe(res => {
+      this.loading.profile = false;
+      console.log('profile response', res);
+      if (!res) {
+        this.profileName = 'Technician';
+        this.experienceYears = null;
+        return;
       }
+
+      const userObj = res.user ?? res;
+      this.profileName =
+        userObj?.fullName ||
+        userObj?.name ||
+        (userObj?.firstName ? `${userObj.firstName} ${userObj.lastName ?? ''}`.trim() : null) ||
+        userObj?.username ||
+        userObj?.email ||
+        'Technician';
+
+      this.profileAvatarUrl = userObj?.avatarUrl || userObj?.profileImage || userObj?.photo || res?.profileImage || null;
+
+      // technician-specific fields
+      this.stats.currentRating = res?.rating ?? res?.currentRating ?? 0;
+      this.stats.wallet = res?.walletBalance ?? res?.wallet ?? res?.balance ?? 0;
+      this.experienceYears = res?.experienceYears ?? res?.experience ?? null;
+    });
+}
+
+
+  loadDashboardData() {
+    // STATS
+    this.loading.stats = true;
+    this.techService.getDashboardStats()
+      .pipe(catchError(err => { console.warn('stats error', err); return of(null); }))
+      .subscribe(s => {
+        this.loading.stats = false;
+        if (!s) return;
+        console.log('stats response', s);
+        this.stats.totalRevenue = s.totalRevenue ?? s.revenue ?? s.earnings ?? 0;
+        this.stats.revenueChangePercent = s.revenueChangePercent ?? s.revenueChange ?? s.earningsChange ?? 0;
+        this.stats.jobsCompleted = s.jobsCompleted ?? s.completedJobs ?? 0;
+        this.stats.jobsChangePercent = s.jobsChange ?? s.jobsChangePercent ?? 0;
+        this.stats.currentRating = s.currentRating ?? s.rating ?? 0;
+        this.stats.wallet = s.wallet ?? s.walletBalance ?? s.balance ?? 0;
+      });
+
+    // NEW JOB REQUESTS
+    this.loading.jobs = true;
+    this.techService.getNewJobRequests()
+      .pipe(catchError(err => { console.warn('new jobs error', err); return of([]); }))
+      .subscribe(list => {
+        this.loading.jobs = false;
+        this.newJobs = (list || []).map(j => ({
+          bookingId: j.bookingId ?? j.id ?? j._id,
+          title: j.title ?? j.serviceName ?? j.jobTitle ?? j.service?.name,
+          rateText: j.rateText ?? (j.rate ? `Fixed Rate: $${j.rate}` : (j.price ? `$${j.price}` : '')),
+          address: j.address ?? (j.location ? `${j.location.street ?? ''} ${j.location.city ?? ''}` : j.addressText ?? ''),
+          raw: j
+        }));
+        console.log('new jobs mapped', this.newJobs);
+      });
+
+    // CURRENT JOB
+    this.loading.current = true;
+    this.techService.getCurrentJob()
+      .pipe(catchError(err => { console.warn('current job error', err); return of(null); }))
+      .subscribe(cj => {
+        this.loading.current = false;
+        if (!cj) { this.currentJob = null; return; }
+        console.log('current job response', cj);
+        this.currentJob = {
+          title: cj.title ?? cj.serviceName ?? cj.jobTitle,
+          address: cj.address ?? cj.location ?? null,
+          progress: Math.floor((cj.progress ?? cj.percent ?? cj.completion ?? 0)),
+          raw: cj
+        };
+      });
+
+    // WEEKLY
+    this.loading.weekly = true;
+    this.techService.getWeeklyEarnings()
+      .pipe(catchError(err => { console.warn('weekly error', err); return of(null); }))
+      .subscribe(w => {
+        this.loading.weekly = false;
+        if (!w) { this.weekly = { total: 0, changePercent: 0, bars: [] }; return; }
+        console.log('weekly response', w);
+        this.weekly.total = w.total ?? w.sum ?? 0;
+        this.weekly.changePercent = w.changePercent ?? w.change ?? 0;
+        this.weekly.bars = w.bars ?? w.series ?? [];
+      });
+  }
+
+  onAccept(bookingId: string) {
+    this.techService.acceptJob(bookingId).subscribe({
+      next: res => {
+        console.log('accepted', res);
+        // remove from the list
+        this.newJobs = this.newJobs.filter(j => j.bookingId !== bookingId);
+        // optionally reload current job
+        this.loadDashboardData();
+      },
+      error: err => console.error('accept failed', err)
     });
   }
 
-  isPending(): boolean {
-    return this.verificationStatus !== 'Verified';
-  }
-
-  acceptJob(bookingId: number): void {
-    if (this.isPending()) {
-      alert('Admin verification required to accept jobs.');
-      return;
-    }
-
-    // If using API:
-    if (this.techService && typeof this.techService.acceptJob === 'function') {
-      this.techService.acceptJob(bookingId).subscribe({
-        next: () => this.loadJobs(),
-        error: (err: any) => alert(err?.error?.message ?? 'Failed to accept job')
-      });
-      return;
-    }
-
-    // fallback UI-only behaviour
-    this.newJobs = this.newJobs.filter(j => j.bookingID !== bookingId);
-    alert('Accepted job ' + bookingId);
-  }
-
-  decline(bookingId: number): void {
-    // call API if available; otherwise just remove locally
-    this.newJobs = this.newJobs.filter(j => j.bookingID !== bookingId);
-  }
-
-  updateStatus(bookingId: number, status: string): void {
-    if (this.isPending()) {
-      alert('Admin verification required to update job status.');
-      return;
-    }
-    if (this.techService && typeof this.techService.updateStatus === 'function') {
-      this.techService.updateStatus(bookingId, status).subscribe({
-        next: () => this.loadJobs(),
-        error: (err: any) => alert(err?.error?.message ?? 'Failed to update status')
-      });
-      return;
-    }
-    // fallback: update local mock
-    if (this.currentJob && this.currentJob.bookingID === bookingId) {
-      this.currentJob.status = status;
-    }
-  }
-
-  onStatusChange(event: Event, bookingId: number): void {
-    const el = event.target as HTMLSelectElement | null;
-    const value = el ? el.value : '';
-    if (value) this.updateStatus(bookingId, value);
+  onDecline(bookingId: string) {
+    this.techService.declineJob(bookingId).subscribe({
+      next: res => {
+        console.log('declined', res);
+        this.newJobs = this.newJobs.filter(j => j.bookingId !== bookingId);
+      },
+      error: err => console.error('decline failed', err)
+    });
   }
 }
