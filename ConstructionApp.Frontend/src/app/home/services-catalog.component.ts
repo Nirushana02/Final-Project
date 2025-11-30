@@ -27,16 +27,17 @@ interface CategoryItem {
 
 @Component({
   selector: 'app-services-catalog',
+  standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './services-catalog.component.html',
   styleUrls: ['./services-catalog.component.css']
 })
 export class ServicesCatalogComponent implements OnInit, OnDestroy {
-  apiRoot = (environment.apiBaseUrl || '').replace(/\/$/, ''); // e.g. http://localhost:5035/api
+  apiRoot = (environment.apiBaseUrl || '').replace(/\/$/, '');
   services: ServiceDto[] = [];
   filtered: ServiceDto[] = [];
   categories: CategoryItem[] = [];
-  activeCategoryId: number | null = null; // null = all
+  activeCategoryId: number | null = null;
   search = '';
   isLoading = false;
   error = '';
@@ -50,25 +51,16 @@ export class ServicesCatalogComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // watch for categoryId query param from Home navigation (and other changes)
     this.routeSub = this.route.queryParams.subscribe((params: Params) => {
       const raw = params['categoryId'];
-      if (raw === undefined || raw === null || raw === '') {
-        this.activeCategoryId = null;
-      } else {
-        const n = Number(raw);
-        this.activeCategoryId = Number.isNaN(n) ? null : n;
-      }
-      // If services already loaded, re-run filtering. Otherwise load services (which will apply filter).
-      if (this.services && this.services.length) {
+      this.activeCategoryId = raw === undefined || raw === null || raw === '' ? null : Number(raw);
+
+      if (this.services.length) {
         this.applyFilter();
       } else {
         this.loadServices();
       }
     });
-
-    // Initial load if no query params emitted yet
-    // (loadServices will be called by the subscription above on first emission in most setups)
   }
 
   ngOnDestroy(): void {
@@ -77,22 +69,18 @@ export class ServicesCatalogComponent implements OnInit, OnDestroy {
 
   private getAuthHeaders(): { headers?: HttpHeaders } {
     const token = localStorage.getItem('authToken');
-    if (token) {
-      return { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) };
-    }
-    return {};
+    return token ? { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) } : {};
   }
 
   loadServices(): void {
     this.isLoading = true;
     this.error = '';
 
-    const adminUrl = `${this.apiRoot}/admin/services`;
-    console.log('Requesting services from:', adminUrl);
+    const url = `${this.apiRoot}/admin/services`;
+    console.log('Loading services from:', url);
 
-    this.http.get<ServiceDto[]>(adminUrl, this.getAuthHeaders()).subscribe({
+    this.http.get<ServiceDto[]>(url, this.getAuthHeaders()).subscribe({
       next: (data) => {
-        // ensure categoryID is numeric where possible
         this.services = (data || []).map(s => ({
           ...s,
           categoryID: s.categoryID != null ? Number(s.categoryID) : null
@@ -102,102 +90,87 @@ export class ServicesCatalogComponent implements OnInit, OnDestroy {
         this.isLoading = false;
       },
       error: (err: HttpErrorResponse) => {
-        console.error('Failed loading admin/services:', err);
-        if (err.status === 0) {
-          this.error = 'Cannot reach backend — is the API server running?';
-        } else if (err.status === 401 || err.status === 403) {
-          this.error = 'Authentication required to load services (401/403). Please login or provide a token.';
-        } else if (err.status === 404) {
-          this.error = `Services API not found at ${adminUrl} (404).`;
-        } else if (err.error?.message) {
-          this.error = err.error.message;
-        } else {
-          this.error = `Unable to load services. (status ${err.status})`;
-        }
+        console.error('Load services failed:', err);
+        this.error = err.status === 401 || err.status === 403
+          ? 'Please login to view services.'
+          : 'Unable to load services. Please try again later.';
         this.isLoading = false;
       }
     });
   }
 
   buildCategories(): void {
-    const map = new Map<number|string, CategoryItem>();
+    const map = new Map<number | string, CategoryItem>();
     for (const s of this.services) {
       const key = s.categoryID ?? 'uncat';
-      const name = s.categoryName ?? 'Uncategorized';
-      const numericKey = s.categoryID != null ? Number(s.categoryID) : 'uncat';
-      if (!map.has(numericKey)) {
-        map.set(numericKey, { categoryID: s.categoryID ?? null, categoryName: name, count: 0 });
+      const name = s.categoryName || 'Uncategorized';
+      if (!map.has(key)) {
+        map.set(key, { categoryID: s.categoryID, categoryName: name, count: 0 });
       }
-      map.get(numericKey)!.count++;
+      map.get(key)!.count++;
     }
     const list = Array.from(map.values());
-    list.sort((a,b)=> a.categoryName.localeCompare(b.categoryName));
-    this.categories = [{ categoryID: null, categoryName: 'All', count: this.services.length }, ...list];
+    list.sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    this.categories = [
+      { categoryID: null, categoryName: 'All Services', count: this.services.length },
+      ...list
+    ];
   }
 
-  // Accept number | string | null so callers from templates or routing work reliably
   selectCategory(catId: number | string | null): void {
-    if (catId === null || catId === undefined || catId === '') {
-      this.activeCategoryId = null;
-    } else {
-      const n = Number(catId);
-      this.activeCategoryId = Number.isNaN(n) ? null : n;
-    }
-
-    // update filter locally
+    this.activeCategoryId = catId == null || catId === '' ? null : Number(catId);
     this.applyFilter();
 
-    // reflect into the URL so back/refresh works and Home navigation is honored
-    // (replaceUrl: false keeps history, queryParamsHandling: 'merge' can be used if needed)
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { categoryId: this.activeCategoryId },
-      queryParamsHandling: 'merge'
+      queryParams: { categoryId: this.activeCategoryId || null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
     });
   }
 
   applyFilter(): void {
-    const term = (this.search || '').trim().toLowerCase();
-
-    // Compare numeric values to avoid string vs number mismatches
-    const activeNum = this.activeCategoryId == null ? null : Number(this.activeCategoryId);
+    const term = this.search.trim().toLowerCase();
+    const activeNum = this.activeCategoryId;
 
     this.filtered = this.services.filter(s => {
-      const svcCat = s.categoryID == null ? null : Number(s.categoryID);
-      const matchesCat = activeNum == null || svcCat === activeNum;
-      const matchesSearch = !term || (
-        (s.serviceName && s.serviceName.toLowerCase().includes(term)) ||
-        (s.description && s.description.toLowerCase().includes(term))
-      );
-      return matchesCat && matchesSearch;
+      const catMatch = activeNum == null || s.categoryID === activeNum;
+      const searchMatch = !term ||
+        s.serviceName.toLowerCase().includes(term) ||
+        (s.description && s.description.toLowerCase().includes(term));
+      return catMatch && searchMatch;
     });
-
-    console.debug('applyFilter -> activeCategoryId:', this.activeCategoryId, 'filtered:', this.filtered.length);
   }
+bookNow(service: ServiceDto): void {
+  const token = localStorage.getItem('authToken');
+  const role = localStorage.getItem('userRole');
 
-  bookNow(s: ServiceDto): void {
-    this.router.navigate(['/book', s.serviceID]);
+  if (token && role === 'customer') {
+    this.router.navigate(['/customer/booking'], {
+      state: { selectedService: service }
+    });
+  } else {
+    this.router.navigate(['/login'], {
+      queryParams: {
+        returnUrl: '/customer/booking',
+        serviceId: service.serviceID
+      }
+    });
   }
+}
 
   getImageUrl(s: ServiceDto | string | undefined | null): string | null {
-    const path = typeof s === 'string' ? s : (s ? (s as ServiceDto).imageUrl : null);
+    const path = typeof s === 'string' ? s : s?.imageUrl;
     if (!path) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    let p = path;
-    if (!p.startsWith('/')) {
-      if (p.startsWith('uploads/')) p = `/${p}`;
-      else p = `/uploads/${p}`;
-    }
-    const apiHost = this.apiRoot.replace(/\/api$/, '');
-    return `${apiHost}${p}`;
+    if (path.startsWith('http')) return path;
+
+    const base = this.apiRoot.replace(/\/api$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/uploads/${path}`;
+    return `${base}${cleanPath}`;
   }
 
-  formatPrice(n: number|undefined|null): string {
+  formatPrice(n: number | undefined | null): string {
     if (n == null) return 'Rs. 0.00';
-    try {
-      return 'Rs. ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } catch {
-      return 'Rs. ' + (Number(n) || 0).toFixed(2);
-    }
+    return 'Rs. ' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }

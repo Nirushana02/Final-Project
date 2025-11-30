@@ -1,16 +1,13 @@
 <!-- src/app/home/services-catalog.component.html -->
  <!-- FIXED NAV BAR (same as home page) -->
-<div class="logo-row">
-  <div class="nav-inner">
-    <div class="logo" routerLink="/home" style="cursor:pointer;">
-      ConstructPro
-    </div>
-    <nav class="top-links">
-      <a routerLink="/home">Home</a>
-      <a routerLink="/services">Services</a>
-      <a routerLink="/about">About Us</a>
-      <a routerLink="/contact">Contact</a>
-      <button class="login" routerLink="/login">Login</button>
+<div class="hero">
+  <div class="container hero-inner">
+    <div class="logo-row">
+      <div class="logo">ConstructPro</div>
+      <nav class="top-links">
+        <a routerLink="/home">Home</a>
+        <a routerLink="/about us">About Us</a>
+        <a routerLink="/contact">Contact</a>
     </nav>
   </div>
 </div>
@@ -65,7 +62,9 @@
           </div>
 
           <div class="actions-left">
-            <button class="btn-book" (click)="bookNow(s)">Book Service Now</button>
+            <button class="btn-book" (click)="bookNow(s)">
+              Book Service Now
+            </button>
           </div>
         </div>
       </div>

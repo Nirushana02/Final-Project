@@ -20,21 +20,23 @@ html, body {
   color: #e8eef6;
 }
 
-/* ---------- GLASS NAVBAR ---------- */
 .logo-row {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 72px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  padding: 0 18px;
+
+  padding: 0 26px;
   z-index: 9999;
 
-  background: rgba(255,255,255,0.02);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+  background: rgba(255,255,255,0.02);   /* glass */
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .logo-row .nav-inner {

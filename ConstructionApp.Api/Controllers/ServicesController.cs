@@ -9,8 +9,8 @@ namespace ConstructionApp.Api.Controllers
 {
     [ApiController]
     [Route("api/admin/[controller]")]
-    [AllowAnonymous]  
-    // [Authorize(Roles = "Admin")]
+   // [AllowAnonymous]  
+    [Authorize(Roles = "Admin")]
     public class ServicesController : ControllerBase
     {
         private readonly AppDbContext _db;

@@ -63,20 +63,38 @@ html, body {
 /* Navbar links */
 .top-links {
   display: flex;
-  gap: 22px;
+  gap: 18px;
+  align-items: center;
 }
 
 .top-links a {
-  color: #d4d4e0;
+  color: #e8ecf5;
   text-decoration: none;
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: 0.25s ease;
+  font-weight: 600;
+  padding: 6px 10px;
+  transition: 0.2s;
 }
 
 .top-links a:hover {
-  color: #b78aff;
-  text-shadow: 0 0 6px rgba(183,138,255,0.6);
+  color: #c197ff;
+  transform: translateY(-2px);
+}
+
+.top-links .login {
+  padding: 8px 14px;
+  background: linear-gradient(90deg,#b67aff,#7c4dff);
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-weight: 800;
+  color: #0b0511;
+  box-shadow: 0 10px 30px rgba(124,77,255,0.25);
+  transition: 0.2s;
+}
+
+.top-links .login:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(124,77,255,0.35);
 }
 
 /* ----------------------------------------------------------

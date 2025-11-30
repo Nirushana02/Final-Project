@@ -1,4 +1,3 @@
-// File: Helpers/JwtTokenHelper.cs
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -20,29 +19,33 @@ namespace ConstructionApp.Api.Helpers
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-                new Claim(ClaimTypes.Name, user.FullName),
+                // இவை ரெண்டும் must for AddressesController!
+                new Claim("UserID", user.UserID.ToString()),                    // THIS LINE WAS MISSING!
+                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),   // Standard ID claim
+
+                new Claim(ClaimTypes.Name, user.FullName ?? user.Email),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role ?? "Customer"), // உங்க DB-ல Role இருக்கு!
+                new Claim(ClaimTypes.Role, user.Role ?? "Customer"),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
+                new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
 
-            // Extra claims for Admin
-            if (user.Role == "Admin" && user.Admin != null)
-            {
-                claims.Add(new Claim("adminLevel", user.Admin.AdminLevel ?? "SuperAdmin"));
-                claims.Add(new Claim("isSuperAdmin", (user.Admin.AdminLevel == "SuperAdmin").ToString().ToLower()));
-            }
-
-            // Extra claims for Technician
+            // Technician extra claims
             if (user.Role == "Technician" && user.Technician != null)
             {
                 claims.Add(new Claim("technicianId", user.Technician.TechnicianID.ToString()));
+                claims.Add(new Claim("verificationStatus", user.Technician.VerificationStatus ?? "Pending"));
+            }
+
+            // Admin extra claims
+            if (user.Role == "Admin" && user.Admin != null)
+            {
+                claims.Add(new Claim("adminLevel", user.Admin.AdminLevel ?? "SuperAdmin"));
             }
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key missing")));
+                _config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not found in configuration")));
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

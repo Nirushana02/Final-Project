@@ -25,15 +25,22 @@ namespace ConstructionApp.Api.DTOs
     }
 
     public class CreateBookingDto
-    {
-        [Required] public int ServiceID { get; set; }
-        [Required] public string Description { get; set; } = null!;
-        [Required] public int AddressID { get; set; }
-        [Required] public DateTime PreferredStartDateTime { get; set; }
-        [Required] public DateTime PreferredEndDateTime { get; set; }
-        public IFormFile? ReferenceImage { get; set; }
-    }
+{
+    [Required] public int ServiceID { get; set; }
 
+
+    public int Quantity { get; set; } = 1;
+    
+    [Required(ErrorMessage = "The Description field is required.")]
+    public string Description { get; set; } = string.Empty;
+
+    // இது இல்லாம இருந்தா Angular payload reject ஆகும்!
+
+    [Required] public int AddressID { get; set; }
+    [Required] public DateTime PreferredStartDateTime { get; set; }
+    [Required] public DateTime PreferredEndDateTime { get; set; }
+    public IFormFile? ReferenceImage { get; set; }
+}
     public class UpdateBookingStatusDto
     {
         [Required]

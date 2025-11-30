@@ -4,21 +4,19 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../shared/services/auth.service';
-import { LucideAngularModule } from "lucide-angular";
+import { LucideAngularModule } from 'lucide-angular';
+import { environment } from '../../../environments/environment';
 
 declare const cloudinary: any;
 
 interface Address {
-  id: number;
-  title: string;
-  address: string;
-  isDefault?: boolean;
-}
-
-interface Notifications {
-  bookingConfirmation: boolean;
-  statusUpdates: boolean;
-  offers: boolean;
+  addressID: number;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
 }
 
 @Component({
@@ -33,31 +31,40 @@ export class ProfileComponent implements OnInit {
     name: '',
     email: '',
     phone: '',
-    avatar: 'assets/images/default-avatar.png'
+    avatar: ''
   };
 
-  addresses: Address[] = [
-    { id: 1, title: 'Main Office Site', address: '123 Construction Ave\nBuilding B, 5th Floor\nColombo 07, Sri Lanka', isDefault: true },
-    { id: 2, title: 'Warehouse Location', address: '456 Logistics Park\nUnit 12, Zone E\nGalle Road, Colombo' }
-  ];
+  addresses: Address[] = [];
+  isLoading = true;
+  showAddForm = false;
+  isEditMode = false;
+  currentEditId = 0;
 
-  notifications: Notifications = {
+  // NOTIFICATIONS PROPERTY - HTML-ல use ஆகுது
+  notifications = {
     bookingConfirmation: true,
     statusUpdates: true,
     offers: false
   };
 
-  private apiUrl = 'http://localhost:5035/api';
+  newAddress: any = {
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'Sri Lanka',
+    isDefault: false
+  };
 
-  // Cloudinary Config – உங்க details!
+  private apiUrl = environment.apiBaseUrl;
+
   private cloudinaryConfig = {
     cloud_name: 'dxbhnpgd4',
     upload_preset: 'construction_app',
     folder: 'constructpro/profiles',
     cropping: true,
     multiple: false,
-    sources: ['local', 'camera', 'facebook', 'instagram'],
-    tags: ['profile', 'customer']
+    sources: ['local', 'camera']
   };
 
   constructor(
@@ -67,82 +74,228 @@ export class ProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProfile();
+    this.loadAddresses();
+  }
+
+  // IMAGE ERROR FALLBACK METHOD - HTML-ல (error) use ஆகுது
+  onImgError(event: any) {
+    event.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(this.user.name || 'User')}&background=8b5cf6&color=fff&bold=true&size=256`;
   }
 
   loadProfile() {
     const token = this.auth.getToken();
+    if (!token || !this.auth.isLoggedIn()) {
+      alert('Session expired! Redirecting to login...');
+      this.auth.logout();
+      return;
+    }
+
     this.http.get<any>(`${this.apiUrl}/customer/profile`, {
       headers: { Authorization: `Bearer ${token}` }
     }).subscribe({
       next: (res) => {
         if (res.success && res.data) {
-          this.user.name = res.data.fullName;
-          this.user.email = res.data.email;
-          this.user.phone = res.data.phone || '';
-          this.user.avatar = res.data.profileImage || 'assets/images/default-avatar.png';
+          this.user = {
+            name: res.data.fullName || '',
+            email: res.data.email || '',
+            phone: res.data.phone || '',
+            avatar: res.data.profileImage || ''
+          };
+
+          if (!this.user.avatar) {
+            this.user.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(this.user.name)}&background=8b5cf6&color=fff&bold=true&size=200`;
+          }
+
+          localStorage.setItem('userName', this.user.name);
+          localStorage.setItem('userEmail', this.user.email);
         }
       },
-      error: () => alert('Failed to load profile')
-    });
-  }
-
-  // CLOUDINARY PROFILE IMAGE UPLOAD
-  changeProfileImage() {
-    cloudinary.openUploadWidget(
-      this.cloudinaryConfig,
-      (error: any, result: any) => {
-        if (!error && result && result.event === 'success') {
-          const imageUrl = result.info.secure_url;
-          this.user.avatar = imageUrl;
-          this.saveProfileImage(imageUrl);
-        }
+      error: () => {
+        this.user.name = localStorage.getItem('userName') || '';
+        this.user.email = localStorage.getItem('userEmail') || '';
       }
-    );
+    });
+  }
+loadAddresses() {
+  const token = this.auth.getToken();
+  if (!token) return;
+
+  this.isLoading = true;
+
+  this.http.get<any>(`${this.apiUrl}/addresses/my`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }).subscribe({
+    next: (res) => {
+      // இதுதான் முக்கியம்! Postman-ல வர response structure பாரு
+      let data = [];
+
+      if (Array.isArray(res)) {
+        data = res;
+      } else if (res.data && Array.isArray(res.data)) {
+        data = res.data;
+      } else if (res.addresses && Array.isArray(res.addresses)) {
+        data = res.addresses;
+      } else {
+        console.warn('Unexpected response format:', res);
+        data = [];
+      }
+
+      this.addresses = data.map((a: any) => ({
+        addressID: a.addressID ?? a.AddressID ?? a.id ?? 0,
+        street: a.street ?? a.Street ?? '',
+        city: a.city ?? a.City ?? '',
+        state: a.state ?? a.State ?? '',
+        postalCode: a.postalCode ?? a.PostalCode ?? '',
+        country: a.country ?? a.Country ?? 'Sri Lanka',
+        isDefault: a.isDefault ?? a.IsDefault ?? false
+      }));
+
+      console.log('Loaded addresses:', this.addresses); // ← Console-ல பாரு!
+      this.isLoading = false;
+    },
+    error: (err) => {
+      console.error('Load addresses error:', err);
+      this.isLoading = false;
+      alert('Failed to load addresses: ' + (err.error?.message || err.message));
+    }
+  });
+}
+  openAddForm() {
+    this.isEditMode = false;
+    this.resetForm();
+    this.showAddForm = true;
   }
 
-  saveProfileImage(url: string) {
+  openEditModal(addr: Address) {
+    this.isEditMode = true;
+    this.currentEditId = addr.addressID;
+    this.newAddress = { ...addr };
+    this.showAddForm = true;
+  }
+
+ saveAddress() {
+  // Required fields check
+  if (!this.newAddress.street?.trim() ||
+      !this.newAddress.city?.trim() ||
+      !this.newAddress.postalCode?.trim()) {
+    alert('Please fill all required fields: Street, City & Postal Code!');
+    return;
+  }
+
+  const token = this.auth.getToken();
+  if (!token) {
+    alert('Session expired! Please login again.');
+    this.auth.logout();
+    return;
+  }
+
+  // Clean payload - C# model-க்கு exact match!
+  const payload = {
+    street: this.newAddress.street.trim(),
+    city: this.newAddress.city.trim(),
+    state: this.newAddress.state?.trim() || null,
+    postalCode: this.newAddress.postalCode.trim(),
+    country: this.newAddress.country || 'Sri Lanka',
+    isDefault: !!this.newAddress.isDefault
+  };
+
+  const url = this.isEditMode
+    ? `${this.apiUrl}/addresses/${this.currentEditId}`
+    : `${this.apiUrl}/addresses`;
+
+  const request = this.isEditMode
+    ? this.http.put<any>(url, payload, { headers: { Authorization: `Bearer ${token}` } })
+    : this.http.post<any>(url, payload, { headers: { Authorization: `Bearer ${token}` } });
+
+  request.subscribe({
+    next: (response) => {
+      console.log('Address saved successfully:', response);
+      alert(this.isEditMode ? 'Address updated successfully!' : 'New address added!');
+      this.showAddForm = false;
+      this.resetForm();
+      this.loadAddresses(); // Refresh list
+    },
+    error: (err) => {
+      console.error('Save address failed:', err);
+      const msg = err.error?.message || err.error?.title || err.message || 'Unknown error';
+      alert('Failed to save address: ' + msg);
+    }
+  });
+}
+  setDefaultAddress(id: number) {
     const token = this.auth.getToken();
-    this.http.patch(`${this.apiUrl}/customer/profile/image`,
-      { profileImage: url },
-      { headers: { Authorization: `Bearer ${token}` } }
-    ).subscribe({
-      next: () => alert('Profile picture updated!'),
-      error: () => alert('Failed to save image')
-    });
-  }
-
-  // ADDRESS MANAGEMENT
-  addNewAddress() {
-    this.addresses.push({
-      id: Date.now(),
-      title: 'New Address',
-      address: 'Enter full address...',
-      isDefault: false
-    });
+    this.http.patch(`${this.apiUrl}/addresses/${id}/default`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).subscribe(() => this.loadAddresses());
   }
 
   deleteAddress(id: number) {
     if (!confirm('Delete this address?')) return;
-    this.addresses = this.addresses.filter(a => a.id !== id);
+    const token = this.auth.getToken();
+    this.http.delete(`${this.apiUrl}/addresses/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).subscribe(() => {
+      this.addresses = this.addresses.filter(a => a.addressID !== id);
+    });
   }
 
-  setDefaultAddress(id: number) {
-    this.addresses.forEach(a => a.isDefault = a.id === id);
+  resetForm() {
+    this.newAddress = {
+      street: '', city: '', state: '', postalCode: '', country: 'Sri Lanka', isDefault: false
+    };
   }
 
-  // SAVE PROFILE
+  changeProfileImage() {
+    if (typeof cloudinary === 'undefined') {
+      alert('Cloudinary not loaded! Check internet connection.');
+      return;
+    }
+
+    cloudinary.openUploadWidget(this.cloudinaryConfig, (error: any, result: any) => {
+      if (error) {
+        console.error('Upload error:', error);
+        return;
+      }
+      if (result?.event === 'success') {
+        const url = result.info.secure_url;
+        this.user.avatar = url;
+        this.saveProfileImage(url);
+      }
+    });
+  }
+
+  private saveProfileImage(url: string) {
+    const token = this.auth.getToken();
+    if (!token) return;
+
+    this.http.patch(
+      `${this.apiUrl}/customer/profile/image`,
+      { profileImage: url },
+      { headers: { Authorization: `Bearer ${token}` } }
+    ).subscribe({
+      next: () => console.log('Photo saved!'),
+      error: () => alert('Photo uploaded but save failed. Click Save All Changes.')
+    });
+  }
+
   saveProfile() {
+    const token = this.auth.getToken();
+    if (!token) return;
+
     const payload = {
       fullName: this.user.name,
-      phone: this.user.phone
+      phone: this.user.phone,
+      profileImage: this.user.avatar
     };
 
-    const token = this.auth.getToken();
     this.http.put(`${this.apiUrl}/customer/profile`, payload, {
       headers: { Authorization: `Bearer ${token}` }
     }).subscribe({
-      next: () => alert('Profile updated successfully!'),
-      error: () => alert('Save failed')
+      next: () => {
+        alert('All changes saved successfully!');
+        localStorage.setItem('userName', this.user.name);
+      },
+      error: () => alert('Save failed!')
     });
   }
 }

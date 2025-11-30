@@ -458,12 +458,16 @@
   padding: 12px 20px 18px;
 }
 
+/* --------- UPDATED GRID & IMAGE RULES (improved sizing & cropping) --------- */
+
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); /* keep sensible min width */
   gap: 16px;
+  align-items: start; /* keep items aligned at top */
 }
 
+/* make each card stretch to equal heights within a row */
 .service-card {
   background: #020617;
   border-radius: 18px;
@@ -473,6 +477,7 @@
   flex-direction: column;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  height: 100%; /* fill grid cell vertically */
 }
 
 .service-card:hover {
@@ -481,18 +486,28 @@
   border-color: #0fb59b;
 }
 
+/* Image container: fixed aspect area, crops image with object-fit */
 .service-image-wrapper {
   position: relative;
-  height: 140px;
+  height: 160px; /* slightly taller for better presentation */
   background: radial-gradient(circle at top, #1f2937, #020617);
   overflow: hidden;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
+  display: block;
 }
 
 .service-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: top center;
+  object-fit: cover;      /* fills container and crops */
+  object-position: center top;
+  display: block;
+  transition: transform 0.18s ease;
+}
+
+/* subtle zoom on hover */
+.service-card:hover .service-image {
+  transform: scale(1.03);
 }
 
 .placeholder-image {
@@ -523,8 +538,10 @@
   z-index: 30;
 }
 
+/* ensure body grows so footer sits at bottom */
 .service-body {
   padding: 12px 14px 4px;
+  flex: 1 1 auto;
 }
 
 .service-title {
@@ -548,6 +565,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .service-meta {
@@ -583,4 +601,20 @@
 .btn-ghost.small {
   padding: 4px 10px;
   font-size: 12px;
+}
+
+/* responsive tweaks */
+@media (max-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .service-image-wrapper { height: 150px; }
+}
+
+@media (max-width: 640px) {
+  .services-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .service-image-wrapper { height: 130px; }
 }

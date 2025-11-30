@@ -1,0 +1,168 @@
+<!-- src/app/customer/dashboard/customer-dashboard.component.html -->
+<div class="dashboard-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-icon">C</span>
+      <span class="logo-text">ConstructPro</span>
+    </div>
+
+    <nav class="nav-menu">
+      <a routerLink="/customer/dashboard" routerLinkActive="active" class="nav-item">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a routerLink="/customer/booking" routerLinkActive="active" class="nav-item book-service-link">
+        <i class="fas fa-tools"></i> Book a Service
+      </a>
+      <a routerLink="/customer/profile" routerLinkActive="active" class="nav-item">
+        <i class="fas fa-user"></i> Profile
+      </a>
+      <a routerLink="/customer/notifications" routerLinkActive="active" class="nav-item">
+        <i class="fas fa-bell"></i> Notifications
+      </a>
+      <a href="#" class="nav-item">
+        <i class="fas fa-question-circle"></i> Help
+      </a>
+      <div class="flex gap-4">
+        <button (click)="logout()" class="logout-btn px-6 py-3 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-xl transition">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </nav>
+
+    <!-- User Info in Sidebar -->
+    <div class="user-info">
+      <img [src]="userAvatar || 'https://ui-avatars.com/api/?name=' + userName + '&background=8b5cf6&color=fff&bold=true&size=128'"
+           alt="User Avatar" class="user-avatar rounded-full object-cover">
+      <div class="user-details">
+        <div class="user-name font-bold text-white">{{ userName }}</div>
+        <div class="user-email text-sm text-gray-400">{{ userEmail }}</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Page Header -->
+    <header class="page-header">
+      <div>
+        <h1 class="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-[#c4b5fd] to-[#8b5cf6] bg-clip-text text-transparent">
+          Welcome back, {{ userName }}!
+        </h1>
+        <p class="text-xl text-gray-400 mt-3">Here's what's happening with your projects today.</p>
+      </div>
+    </header>
+
+    <!-- Current Active Booking -->
+    <section class="current-booking-section" *ngIf="currentBooking; else noCurrentBooking">
+      <h2 class="text-3xl font-bold text-[#c4b5fd] mb-6">Current Active Project</h2>
+
+      <div class="booking-card glass p-8 rounded-3xl shadow-2xl border border-[#8b5cf6]/30">
+        <div class="flex justify-between items-start mb-6">
+          <div>
+            <h3 class="text-4xl font-bold text-white">{{ currentBooking.serviceName }}</h3>
+            <p class="text-xl text-gray-300 mt-2">
+              <i class="fas fa-calendar-alt text-[#8b5cf6]"></i> {{ currentBooking.scheduledDate }}
+            </p>
+          </div>
+          <div class="status-badge text-lg px-6 py-3 rounded-full font-bold"
+               [ngClass]="getStatusClass(currentBooking.status)">
+            {{ currentBooking.status }}
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mb-8">
+          <div class="flex justify-between text-sm mb-2">
+            <span class="text-gray-400">Project Progress</span>
+            <span class="text-[#8b5cf6] font-bold">{{ currentBooking.progress }}% Complete</span>
+          </div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="currentBooking.progress"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Technician Info -->
+        <div class="technician-info flex items-center gap-6 mb-8 p-6 bg-white/5 rounded-2xl">
+          <img [src]="currentBooking.technicianPhoto || 'https://randomuser.me/api/portraits/men/45.jpg'"
+               alt="Technician" class="w-20 h-20 rounded-full object-cover border-4 border-[#8b5cf6]/50">
+          <div>
+            <div class="text-2xl font-bold text-white">{{ currentBooking.technicianName }}</div>
+            <div class="text-gray-400">Assigned Technician</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-6 justify-center">
+          <button (click)="contactTechnician()"
+                  class="btn-primary px-10 py-5 text-xl rounded-xl flex items-center gap-3 transform hover:scale-105 transition">
+            <i class="fas fa-comment-dots"></i> Chat with Technician
+          </button>
+          <button (click)="viewDetails(currentBooking.bookingID)"
+                  class="btn-secondary px-10 py-5 text-xl rounded-xl flex items-center gap-3 transform hover:scale-105 transition">
+            <i class="fas fa-eye"></i> View Full Details
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- No Active Booking -->
+    <ng-template #noCurrentBooking>
+      <div class="no-booking glass p-16 rounded-3xl text-center max-w-2xl mx-auto mt-10">
+        <div class="text-9xl text-gray-600 mb-8">
+          <i class="fas fa-hard-hat"></i>
+        </div>
+        <h3 class="text-4xl font-bold text-white mb-4">No Active Projects</h3>
+        <p class="text-xl text-gray-400 mb-10">Ready to start your next construction journey?</p>
+        <a routerLink="/customer/booking"
+           class="purple-btn text-2xl px-12 py-6 inline-flex items-center gap-4 transform hover:scale-110 transition">
+          <i class="fas fa-plus-circle"></i> Book a New Service
+        </a>
+      </div>
+    </ng-template>
+
+    <!-- Booking History -->
+    <section class="history-section mt-16">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl font-bold text-[#c4b5fd]">Booking History</h2>
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" placeholder="Search past bookings..." class="bg-transparent outline-none text-white">
+        </div>
+      </div>
+
+      <div class="table-container glass rounded-3xl overflow-hidden">
+        <table class="history-table w-full">
+          <thead>
+            <tr class="bg-[#8b5cf6]/20">
+              <th>Service</th>
+              <th>Date</th>
+              <th>Technician</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let b of bookingHistory" class="hover:bg-white/5 transition">
+              <td class="font-semibold text-white">{{ b.serviceName }}</td>
+              <td class="text-gray-300">{{ b.scheduledDate }}</td>
+              <td>{{ b.technicianName }}</td>
+              <td class="font-bold text-[#8b5cf6]">Rs. {{ b.price | number:'1.0-0' }}</td>
+              <td>
+                <span class="status-badge px-5 py-2 rounded-full text-sm font-bold"
+                      [ngClass]="getStatusClass(b.status)">
+                  {{ b.status }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>

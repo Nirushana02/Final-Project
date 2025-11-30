@@ -1,4 +1,8 @@
-/* src/app/admin/layout/admin-sidebar.component.css */
+/* src/app/admin/layout/admin-sidebar.component.css
+   Responsive sidebar + glass/active effects
+*/
+
+/* Base link styles (keeping your original design) */
 .nav-link {
   display: flex;
   align-items: center;
@@ -7,17 +11,20 @@
   border-radius: 12px;
   color: #9ca3af;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.28s cubic-bezier(.2,.9,.2,1);
   position: relative;
   overflow: hidden;
+  white-space: nowrap;
 }
 
+/* hover */
 .nav-link:hover {
-  background: linear-gradient(to right, rgba(20, 184, 166, 0.1), transparent);
-  color: white;
+  background: linear-gradient(to right, rgba(20, 184, 166, 0.10), transparent);
+  color: #ffffff;
   padding-left: 28px;
 }
 
+/* left accent (animated) */
 .nav-link::before {
   content: '';
   position: absolute;
@@ -27,11 +34,13 @@
   width: 4px;
   background: #14b8a6;
   transform: scaleY(0);
+  transform-origin: top center;
   transition: transform 0.3s ease;
 }
 
+/* active */
 .nav-link.active {
-  background: linear-gradient(to right, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
+  background: linear-gradient(to right, rgba(20, 184, 166, 0.20), rgba(20, 184, 166, 0.05));
   color: #14b8a6;
   font-weight: 600;
 }
@@ -40,21 +49,148 @@
   transform: scaleY(1);
 }
 
+/* icons */
 .nav-link .icon {
   width: 20px;
   height: 20px;
   color: #9ca3af;
-  transition: color 0.3s ease;
+  transition: color 0.28s ease, transform 0.28s ease;
 }
 
 .nav-link:hover .icon,
 .nav-link.active .icon {
   color: #14b8a6;
+  transform: translateX(0);
 }
 
-/* Smooth gradient text for logo */
+/* logo gradient text utility */
 .bg-clip-text {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* -----------------------
+   Responsive behavior
+   ----------------------- */
+
+/* ---------- Large screens (default) ---------- */
+/* keep your current desktop layout */
+@media (min-width: 1100px) {
+  aside, .admin-sidebar, .sidebar {
+    width: 16rem; /* matches Tailwind w-64 */
+    min-width: 16rem;
+  }
+}
+
+/* ---------- Medium screens (tablet) ---------- */
+/* slightly tighter spacing to avoid wrapping on 768-1099px */
+@media (max-width: 1099px) and (min-width: 769px) {
+  .nav-link {
+    gap: 12px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
+
+  .nav-link .icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  aside, .admin-sidebar, .sidebar {
+    width: 14.5rem;
+    min-width: 14.5rem;
+  }
+}
+
+/* ---------- Small screens (mobile) ----------
+   Convert left vertical sidebar into a top horizontal nav
+   that is fixed and scrollable horizontally.
+   This preserves space for the main dashboard content.
+*/
+@media (max-width: 768px) {
+  /* target your sidebar; fallback to generic aside */
+  aside, .admin-sidebar, .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(10, 12, 15, 0.96);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    z-index: 60;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* layout of nav container: preserve original nav-link markup */
+  nav, .nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* convert each link to inline pill for horizontal scroll */
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.01);
+    color: #d1d5db;
+    font-weight: 600;
+    min-width: auto;
+    white-space: nowrap;
+  }
+
+  /* reduce icon size and hide long text if needed */
+  .nav-link .icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+
+  /* optional: hide span text when viewport is very narrow (uncomment to use)
+     .nav-link span { display: none; } */
+
+  /* active pill style for mobile */
+  .nav-link.active {
+    background: linear-gradient(90deg,#14b8a6,#0ea5a5);
+    color: #02110b;
+    box-shadow: 0 6px 22px rgba(20,184,166,0.14);
+  }
+
+  /* ensure main content doesn't hide under fixed top bar:
+     you must add padding-top to main content or page wrapper
+     e.g. .main-content { padding-top: 72px; } in your global/admin layout css */
+}
+
+/* ---------- Very small phones: tidy font & gaps ---------- */
+@media (max-width: 420px) {
+  .nav-link {
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 0.95rem;
+  }
+
+  .nav-link .icon { width: 16px; height: 16px; }
+}
+
+/* -----------------------
+   Accessibility & polish
+   ----------------------- */
+/* make nav-link focus-visible outline for keyboard users */
+.nav-link:focus {
+  outline: none;
+}
+.nav-link:focus-visible {
+  box-shadow: 0 0 0 3px rgba(20,184,166,0.12);
+  border-radius: 10px;
+}
+
